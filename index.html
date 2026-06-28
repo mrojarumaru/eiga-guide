@@ -253,11 +253,12 @@ const THEATERS = [
     screens:12, parking:false,
     premium:[
       {name:"IMAX Laser GT", scores:{映像:4,音響:3,サイズ:5}},
+      {name:"BESTIA",        scores:{映像:4,音響:5,サイズ:3}},
       {name:"ULTRA 4DX",     scores:{映像:3,音響:3,サイズ:3}, taikan:true},
       {name:"ScreenX",       scores:{映像:3,音響:3,サイズ:4}},
       {name:"4DX",           scores:{映像:3,音響:3,サイズ:2}, taikan:true}
     ],
-    notes:"関東最高スペックのIMAX。後方席推奨。"
+    notes:"関東最高スペックのIMAX。BESTIA（4K HDR Dolby Atmos）も強力。後方席推奨。"
   },
   {
     id:"toho-ikebukuro", name:"TOHOシネマズ池袋", area:"池袋",
@@ -275,10 +276,11 @@ const THEATERS = [
     accessMin:35, bookingUrl:"https://hlo.tohotheater.jp/net/schedule/076/TNPI2000J01.do",
     screens:12, parking:false,
     premium:[
-      {name:"IMAX Laser", scores:{映像:4,音響:3,サイズ:4}},
+      {name:"IMAX Laser",  scores:{映像:4,音響:3,サイズ:4}},
+      {name:"Dolby Atmos", scores:{映像:2,音響:5,サイズ:3}},
       {name:"MX4D",        scores:{映像:3,音響:3,サイズ:2}, taikan:true}
     ],
-    notes:"IMAX Laser＋体感型の両立が可能。"
+    notes:"IMAX Laser・Dolby Atmos（501席）・体感型の多彩な上映形式。"
   },
   {
     id:"toho-hibiya", name:"TOHOシネマズ日比谷", area:"日比谷",
@@ -328,10 +330,10 @@ const THEATERS = [
     accessMin:30, bookingUrl:"https://www.unitedcinemas.jp/toshimaen/",
     screens:10, parking:false,
     premium:[
-      {name:"IMAXデジタル", scores:{映像:2,音響:3,サイズ:4}},
-      {name:"4DX",          scores:{映像:3,音響:3,サイズ:2}, taikan:true}
+      {name:"IMAX Laser", scores:{映像:4,音響:3,サイズ:4}},
+      {name:"4DX",        scores:{映像:3,音響:3,サイズ:2}, taikan:true}
     ],
-    notes:"★赤01バスで小豆沢から乗換なし1本！"
+    notes:"★赤01バスで小豆沢から乗換なし1本！4KレーザーIMAX搭載（2020年3月改装済）。"
   },
   {
     id:"toho-oimachi", name:"TOHOシネマズ大井町", area:"大井町",
@@ -773,6 +775,7 @@ const KNOWN_FORMATS=[
   "IMAX字幕","IMAX吹替","IMAX 3D字幕","IMAX 3D吹替",
   "Dolby Atmos字幕","Dolby Atmos吹替",
   "Dolby Cinema字幕","Dolby Cinema吹替",
+  "BESTIA字幕","BESTIA吹替",
   "ScreenX字幕","ScreenX吹替",
   "ULTRA 4DX字幕","ULTRA 4DX吹替",
   "4DX字幕","4DX吹替","4D字幕","4D吹替",
