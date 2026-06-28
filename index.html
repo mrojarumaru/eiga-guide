@@ -106,6 +106,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI"
 .sval.fm{color:var(--imax);}.sval.fo{color:var(--dolby);}.sval.fs{color:#2E7D32;}
 /* premium badges */
 .pbwrap{padding:4px 14px 6px;display:flex;flex-wrap:wrap;gap:4px;}
+.actual-fmt{padding:4px 14px 2px;display:flex;align-items:center;gap:6px;}
+.actual-lbl{font-size:11px;color:#555;}
 .pb{font-size:11px;padding:3px 8px;border-radius:10px;font-weight:600;}
 .pb.top{background:#E3F2FD;color:var(--imax);border:1px solid #90CAF9;}
 .pb.sub{background:#f5f5f5;color:var(--sub);border:1px solid #ddd;}
@@ -372,6 +374,49 @@ function maxScores(t){
 }
 function hasTaikan(t){return t.premium&&t.premium.some(p=>p.taikan);}
 
+// 実上映フォーマット名 → 対応するプレミアムスクリーンのスコアを返す
+// フォーマット名例: "ScreenX字幕" "Dolby Atmos字幕" "IMAX Laser字幕" "字幕" "吹替"
+function effectiveScores(t, formats){
+  if(!formats||!Array.isArray(formats)||!formats.length) return{映像:2,音響:2,サイズ:2};
+  if(!t.premium||!t.premium.length) return{映像:2,音響:2,サイズ:2};
+  let best={映像:2,音響:2,サイズ:2};
+  for(const fmt of formats){
+    // 字幕/吹替/3D/2D/空白を除いたキーワード
+    const fk=fmt.name.replace(/字幕|吹替|3D|2D|\s/g,'').toLowerCase();
+    if(!fk) continue; // "字幕"・"吹替"のみ → 通常スクリーン → スコア変えず
+    for(const p of t.premium){
+      const pk=p.name.replace(/\s/g,'').toLowerCase();
+      // eiga.comのフォーマット名がpremium名を含む、またはその逆
+      if(fk.includes(pk)||pk.includes(fk)){
+        const s=p.scores||{};
+        best.映像=Math.max(best.映像,s.映像||0);
+        best.音響=Math.max(best.音響,s.音響||0);
+        best.サイズ=Math.max(best.サイズ,s.サイズ||0);
+      }
+    }
+  }
+  return best;
+}
+
+// 上映中フォーマットのうち最高スコアのプレミアム名を返す（通常上映ならnull）
+function bestActualPremium(t, formats){
+  if(!formats||!Array.isArray(formats)||!formats.length||!t.premium||!t.premium.length) return null;
+  let best=null, bestTotal=-1;
+  for(const fmt of formats){
+    const fk=fmt.name.replace(/字幕|吹替|3D|2D|\s/g,'').toLowerCase();
+    if(!fk) continue;
+    for(const p of t.premium){
+      const pk=p.name.replace(/\s/g,'').toLowerCase();
+      if(fk.includes(pk)||pk.includes(fk)){
+        const s=p.scores||{};
+        const total=(s.映像||0)+(s.音響||0)+(s.サイズ||0);
+        if(total>bestTotal){bestTotal=total;best=p.name;}
+      }
+    }
+  }
+  return best;
+}
+
 // ── PRIORITY / RANKING ─────────────────────────────────
 function setPriority(p,btn){
   priority=p;
@@ -402,8 +447,13 @@ function schedRanked(){
   return[...THEATERS].sort((a,b)=>{
     const as=showingIds.has(a.id)?1:0,bs=showingIds.has(b.id)?1:0;
     if(as!==bs)return bs-as;
-    const sa=maxScores(a),sb=maxScores(b);
-    return sb.映像-sa.映像||a.accessMin-b.accessMin;
+    // 上映中の館は実フォーマットに基づく実効スコアで比較
+    const fa=scheduleMap[a.id],fb=scheduleMap[b.id];
+    const sa=as?effectiveScores(a,fa):maxScores(a);
+    const sb=bs?effectiveScores(b,fb):maxScores(b);
+    // priority に応じたスコアで比較（上映中は映像固定でなくpriority準拠）
+    const p=priority==='音響'?'音響':priority==='サイズ'?'サイズ':'映像';
+    return sb[p]-sa[p]||a.accessMin-b.accessMin;
   });
 }
 
@@ -472,10 +522,14 @@ function fmtBadgeCls(n){
 }
 
 function renderSchedCard(t,rank){
-  const sc=maxScores(t);
   const isShowing=showingIds.has(t.id);
   const fmts=scheduleMap[t.id];
   const isLoading=fmts&&fmts.loading;
+  // スコアバー: 上映中かつデータあり→実効スコア、それ以外→最大スコア
+  const realFmts=isShowing&&Array.isArray(fmts)?fmts:null;
+  const sc=realFmts?effectiveScores(t,realFmts):maxScores(t);
+  // 実際に上映されているプレミアムフォーマット名（通常上映ならnull）
+  const actualPremium=realFmts?bestActualPremium(t,realFmts):null;
   const rc=rank===1?'r1':rank===2?'r2':rank===3?'r3':'rn';
   const rl=rank<=3?['🥇','🥈','🥉'][rank-1]:rank;
 
@@ -507,9 +561,21 @@ function renderSchedCard(t,rank){
     schedHtml='<div class="not-show-note">現在この映画は上映していません</div>';
   }
 
+  // 施設バッジ（館の保有設備）
   const badges=t.premium.length===0
     ?'<span class="pb non">通常スクリーンのみ</span>'
     :t.premium.map((p,i)=>`<span class="pb ${i===0?'top':p.taikan?'tki':'sub'}">${p.name}</span>`).join('');
+
+  // 実上映フォーマットバッジ（上映中の場合のみ）
+  let actualFmtBadge='';
+  if(isShowing&&realFmts&&!isLoading){
+    if(actualPremium){
+      const ac=fmtBadgeCls(actualPremium);
+      actualFmtBadge=`<div class="actual-fmt"><span class="fmt-badge ${ac}">${actualPremium}</span> <span class="actual-lbl">で上映中</span></div>`;
+    }else{
+      actualFmtBadge=`<div class="actual-fmt"><span class="fmt-badge fmt-norm">通常スクリーン</span> <span class="actual-lbl">で上映中</span></div>`;
+    }
+  }
 
   const dimCls=!isShowing&&!isLoading?'dim':'';
   return`<div class="card ${dimCls}">
@@ -527,6 +593,7 @@ function renderSchedCard(t,rank){
     <div class="srow"><span class="slabel">音響</span><div class="strk"><div class="sfill fo" style="width:${sc.音響*20}%"></div></div><span class="sval fo">${sc.音響}</span></div>
     <div class="srow"><span class="slabel">サイズ</span><div class="strk"><div class="sfill fs" style="width:${sc.サイズ*20}%"></div></div><span class="sval fs">${sc.サイズ}</span></div>
   </div>
+  ${actualFmtBadge}
   <div class="pbwrap">${badges}</div>
   ${schedHtml}
   <div class="cfoot">
@@ -728,29 +795,28 @@ function parseScheduleText(text){
       for(const tm of win.matchAll(TIME_RE)){
         const h=parseInt(tm[1]); if(h>=5&&h<=29) times.push({time:tm[1]});
       }
-      if(times.length) dates.push({date:dm[i][0],times});
+      if(times.length) dates.push({date:dm[i][0], times});
     }
     return dates;
   }
-  const pos=[];
+  const results=[];
   for(const fmt of KNOWN_FORMATS){
-    let p=0;
-    while((p=text.indexOf(fmt,p))!==-1){pos.push({pos:p,name:fmt});p+=fmt.length;}
+    const fi=text.indexOf(fmt);
+    if(fi<0) continue;
+    let nextFi=text.length;
+    for(const f2 of KNOWN_FORMATS){
+      const i2=text.indexOf(f2,fi+fmt.length);
+      if(i2>fi&&i2<nextFi) nextFi=i2;
+    }
+    const seg=text.slice(fi+fmt.length,nextFi);
+    const dates=extractDT(seg);
+    if(dates.length) results.push({name:fmt,dates});
   }
-  if(!pos.length){const d=extractDT(text);return d.length?[{name:'字幕',dates:d}]:[];}
-  pos.sort((a,b)=>a.pos-b.pos);
-  const dd=pos.filter((f,i)=>i===0||f.pos>=pos[i-1].pos+pos[i-1].name.length);
-  const fmts=[];
-  for(let i=0;i<dd.length;i++){
-    const s=dd[i].pos+dd[i].name.length;
-    const e=i+1<dd.length?dd[i+1].pos:text.length;
-    const d=extractDT(text.slice(s,Math.min(e,s+3000)));
-    if(d.length) fmts.push({name:dd[i].name,dates:d});
-  }
-  return fmts;
+  return results;
 }
 
-async function fetchTheaterSchedule(movieId,theater){
+// ── SCHEDULE FETCH ─────────────────────────────────────
+async function fetchTheaterSchedule(movieId, theater){
   const url=`https://eiga.com/movie-theater/${movieId}/${theater.eigaPref}/${theater.eigaArea}/${theater.eigaId}/`;
   const html=await fetchViaProxy(url,10000);
   if(!html) return null;
@@ -761,9 +827,10 @@ async function fetchTheaterSchedule(movieId,theater){
   return fmts.length>0?fmts:null;
 }
 
-// ── SCHEDULE FETCH ─────────────────────────────────────
 async function startMovieSearch(movie){
-  selectedMovie=movie; mode='schedule';
+  selectedMovie=movie;
+  mode='schedule';
+
   document.getElementById('mbanner').classList.add('on');
   document.getElementById('bannerTitle').textContent='🎬 '+movie.title;
   document.getElementById('bannerSub').textContent='スケジュールを取得中…';
@@ -771,7 +838,8 @@ async function startMovieSearch(movie){
   document.getElementById('lbar').className='lbar on';
   document.getElementById('lbarTxt').textContent='eiga.comからスケジュールを取得中…';
 
-  showingIds=new Set(); scheduleMap={};
+  showingIds=new Set();
+  scheduleMap={};
   for(const t of THEATERS) scheduleMap[t.id]={loading:true};
   renderScheduleCards();
 
@@ -782,18 +850,18 @@ async function startMovieSearch(movie){
   },25000);
 
   try{
-    const results=await Promise.all(THEATERS.map(async t=>{
-      try{const data=await fetchTheaterSchedule(movie.id,t);return{id:t.id,data};}
-      catch(e){return{id:t.id,data:null};}
+    await Promise.allSettled(THEATERS.map(async t=>{
+      const fmts=await fetchTheaterSchedule(movie.id,t);
+      if(fmts){
+        showingIds.add(t.id);
+        scheduleMap[t.id]=fmts;
+      }else{
+        scheduleMap[t.id]=null;
+      }
     }));
-    showingIds=new Set(); scheduleMap={};
-    for(const{id,data}of results){
-      if(data&&data.length>0){showingIds.add(id);scheduleMap[id]=data;}
-      else{scheduleMap[id]=null;}
-    }
     const cnt=showingIds.size;
     document.getElementById('bannerSub').textContent=
-      cnt>0?`${cnt}館で上映中`:'対象10館での上映なし';
+      cnt>0?`${cnt}館で上映中`:'対象１０館での上映なし';
   }catch(e){
     document.getElementById('bannerSub').textContent='取得エラー — もう一度お試しください';
     for(const t of THEATERS) scheduleMap[t.id]=null;
@@ -804,12 +872,12 @@ async function startMovieSearch(movie){
   }
 }
 
-// ── INIT ───────────────────────────────────────────────
 function selectMovieById(id){
   const movie=allMovies.find(m=>m.id===id);
   if(movie) selectMovie(movie);
 }
 
+// ── INIT ─────────────────────────────────────────────────
 renderRankCards();
 initMovies();
 </script>
