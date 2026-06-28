@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#16213e">
+<title>映画館選びガイド</title>
+<style>
+:root{
+  --bg:#f2f4f8;--card:#fff;--border:#e0e4ec;
+  --text:#1a1a2e;--sub:#555;--muted:#888;
+  --primary:#16213e;--accent:#e94560;
+  --imax:#1565C0;--dolby:#BF360C;--screenx:#6A1B9A;--fourD:#2E7D32;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI",sans-serif;
+  background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;
+  -webkit-text-size-adjust:100%;}
+/* ── HEADER */
+.hd{background:var(--primary);color:#fff;padding:12px 16px;}
+.hd-title{font-size:16px;font-weight:700;}
+.hd-sub{font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;}
+/* ── SEARCH */
+.srch-sec{background:#fff;border-bottom:2px solid var(--accent);
+  padding:12px 16px;position:sticky;top:0;z-index:20;
+  box-shadow:0 2px 12px rgba(0,0,0,0.07);}
+.srch-row{display:flex;gap:0;}
+.srch-input{flex:1;border:1.5px solid var(--border);border-radius:10px 0 0 10px;
+  padding:10px 14px;font-size:15px;color:var(--text);outline:none;
+  background:#f8f9fc;-webkit-appearance:none;}
+.srch-input:focus{border-color:var(--accent);background:#fff;}
+.srch-xbtn{background:#f0f1f5;border:1.5px solid var(--border);border-left:none;
+  border-radius:0 10px 10px 0;color:var(--muted);font-size:16px;cursor:pointer;
+  padding:0 14px;height:44px;display:none;min-width:44px;}
+.srch-status{font-size:11px;color:var(--muted);margin-top:6px;min-height:16px;}
+/* ── SUGGESTIONS */
+.sugg-wrap{position:relative;}
+.sugg-drop{position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:#fff;border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 6px 24px rgba(0,0,0,0.12);z-index:200;display:none;max-height:320px;overflow-y:auto;}
+.sugg-drop.open{display:block;}
+.sugg-item{padding:12px 14px;cursor:pointer;font-size:13px;
+  border-bottom:1px solid #f5f5f5;min-height:44px;display:flex;align-items:center;}
+.sugg-item:last-child{border-bottom:none;}
+.sugg-item:active{background:#f5f7ff;}
+.sugg-empty{padding:12px 14px;font-size:12px;color:var(--muted);}
+/* ── BANNER */
+.mbanner{display:none;background:linear-gradient(135deg,#1a1a2e,#16213e);
+  color:#fff;padding:12px 16px;align-items:center;justify-content:space-between;gap:12px;}
+.mbanner.on{display:flex;}
+.mbtitle{font-size:15px;font-weight:700;}
+.mbsub{font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;}
+.mbc-btn{background:rgba(255,255,255,0.15);color:#fff;border:none;
+  padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;
+  flex-shrink:0;min-height:36px;}
+/* ── FILTER BAR */
+.fbar{background:#fff;padding:10px 16px;border-bottom:1px solid var(--border);}
+.flabel{font-size:10px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;}
+.frow{display:flex;flex-wrap:wrap;gap:6px;}
+.fb{border:1.5px solid var(--border);background:#fff;color:var(--sub);
+  padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;
+  cursor:pointer;min-height:34px;min-width:44px;}
+.fb.act-img{background:#E3F2FD;border-color:var(--imax);color:var(--imax);}
+.fb.act-snd{background:#FBE9E7;border-color:var(--dolby);color:var(--dolby);}
+.fb.act-siz{background:#E8F5E9;border-color:#2E7D32;color:#2E7D32;}
+.fb.act-prm{background:#F3E5F5;border-color:var(--screenx);color:var(--screenx);}
+.fb.act-acc{background:#FFF8E1;border-color:#E65100;color:#E65100;}
+/* ── LOADING */
+.lbar{padding:10px 16px;background:var(--bg);display:none;
+  align-items:center;gap:8px;font-size:13px;color:var(--sub);}
+.lbar.on{display:flex;}
+.spin{width:16px;height:16px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin 0.7s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.rbar{padding:6px 16px;font-size:11px;color:var(--muted);background:var(--bg);}
+/* ── CARDS */
+.cards{padding:0 10px 16px;display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;position:relative;}
+.card.dim{opacity:0.4;}
+/* rank badge */
+.rbg{position:absolute;top:10px;right:10px;font-size:10px;font-weight:700;
+  padding:2px 7px;border-radius:10px;color:#fff;}
+.rbg.r1{background:#B8860B;}.rbg.r2{background:#888;}.rbg.r3{background:#B87333;}
+.rbg.rn{background:#bbb;color:#333;}
+/* card top */
+.ctop{padding:12px 50px 6px 14px;}
+.cname{font-size:15px;font-weight:700;line-height:1.3;}
+.cmeta{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;align-items:center;}
+.atag{font-size:11px;background:#EEF2FF;color:#3949AB;padding:2px 8px;border-radius:10px;}
+.acctag{font-size:11px;color:var(--sub);}
+/* score bars */
+.svrap{padding:6px 14px 4px;}
+.srow{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.slabel{font-size:10px;color:var(--muted);width:30px;flex-shrink:0;}
+.strk{flex:1;height:5px;background:#f0f0f0;border-radius:3px;overflow:hidden;}
+.sfill{height:100%;border-radius:3px;}
+.sfill.fm{background:var(--imax);}
+.sfill.fo{background:var(--dolby);}
+.sfill.fs{background:#2E7D32;}
+.sval{font-size:11px;font-weight:700;width:16px;text-align:right;}
+.sval.fm{color:var(--imax);}.sval.fo{color:var(--dolby);}.sval.fs{color:#2E7D32;}
+/* premium badges */
+.pbwrap{padding:4px 14px 6px;display:flex;flex-wrap:wrap;gap:4px;}
+.pb{font-size:11px;padding:3px 8px;border-radius:10px;font-weight:600;}
+.pb.top{background:#E3F2FD;color:var(--imax);border:1px solid #90CAF9;}
+.pb.sub{background:#f5f5f5;color:var(--sub);border:1px solid #ddd;}
+.pb.tki{background:#E8F5E9;color:var(--fourD);border:1px solid #A5D6A7;}
+.pb.non{background:#f9f9f9;color:#aaa;border:1px solid #eee;}
+/* show badge */
+.show-on{font-size:11px;padding:2px 8px;border-radius:10px;
+  background:#E8F5E9;color:#2E7D32;border:1px solid #A5D6A7;font-weight:600;}
+.show-off{font-size:11px;padding:2px 8px;border-radius:10px;
+  background:#fafafa;color:#bbb;border:1px solid #eee;}
+.show-load{font-size:11px;padding:2px 8px;border-radius:10px;
+  background:#FFF8E1;color:#E65100;border:1px solid #FFE082;}
+/* schedule */
+.sched-wrap{border-top:1px solid var(--border);}
+.sched-div{font-size:11px;color:var(--muted);padding:8px 14px 4px;font-weight:600;}
+.sched-fmt{padding:3px 14px 5px;}
+.fmt-badge{display:inline-block;font-size:10px;font-weight:700;
+  padding:1px 7px;border-radius:8px;margin-bottom:4px;}
+.fmt-imax{background:#E3F2FD;color:var(--imax);}
+.fmt-dolby{background:#FBE9E7;color:var(--dolby);}
+.fmt-screenx{background:#F3E5F5;color:var(--screenx);}
+.fmt-4d{background:#E8F5E9;color:var(--fourD);}
+.fmt-norm{background:#f5f5f5;color:var(--sub);}
+.sched-date{margin-bottom:4px;}
+.sdate-lbl{font-size:11px;color:var(--muted);margin-bottom:3px;}
+.stimes{display:flex;flex-wrap:wrap;gap:4px;}
+.tchip{display:inline-block;font-size:12px;padding:3px 8px;
+  background:#f5f7ff;border:1px solid #dde;border-radius:6px;
+  color:var(--text);min-height:28px;min-width:44px;text-align:center;
+  line-height:22px;}
+.not-show-note{padding:8px 14px;font-size:12px;color:#bbb;
+  border-top:1px solid var(--border);}
+.no-sched{padding:8px 14px;font-size:12px;color:var(--muted);}
+/* footer */
+.cfoot{padding:8px 14px 10px;display:flex;align-items:center;
+  justify-content:space-between;gap:8px;border-top:1px solid var(--border);}
+.finfo{font-size:11px;color:var(--muted);line-height:1.6;}
+.bkbtn{background:var(--accent);color:#fff;border:none;padding:9px 16px;
+  border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;
+  white-space:nowrap;min-height:38px;display:flex;align-items:center;}
+/* table */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 10px 16px;}
+table{border-collapse:collapse;width:100%;min-width:400px;font-size:12px;}
+th{background:var(--primary);color:#fff;padding:8px 10px;text-align:left;white-space:nowrap;}
+td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top;}
+tr:hover td{background:#f8f9ff;}
+.tbl-score{display:flex;gap:6px;flex-wrap:wrap;}
+.ts{padding:1px 6px;border-radius:6px;font-size:11px;font-weight:700;}
+.ts.im{background:#E3F2FD;color:var(--imax);}
+.ts.do{background:#FBE9E7;color:var(--dolby);}
+.ts.si{background:#E8F5E9;color:#2E7D32;}
+/* tabs */
+.tabs{display:flex;background:#fff;border-bottom:2px solid var(--border);}
+.tab{flex:1;padding:12px;text-align:center;font-size:13px;font-weight:600;
+  color:var(--muted);cursor:pointer;border:none;background:none;min-height:44px;}
+.tab.active{color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-2px;}
+/* mobile optimizations */
+@media(max-width:480px){
+  .hd-title{font-size:15px;}
+  .cname{font-size:14px;}
+  .cards{padding:0 8px 16px;}
+}
+</style>
+</head>
+<body>
+<body>
+<div class="hd">
+  <div class="hd-title">🎬 映画館選びガイド</div>
+  <div class="hd-sub">志村坂上から — プロジェクター・音響・アクセスで最適な1館を</div>
+</div>
+
+<!-- 映画検索 -->
+<div class="srch-sec">
+  <div class="sugg-wrap">
+    <div class="srch-row">
+      <input type="search" id="movieInput" class="srch-input"
+        placeholder="映画タイトルを入力…" autocomplete="off"
+        oninput="onInput(this.value)" onfocus="onFocus()"
+        onkeydown="onKeydown(event)" />
+      <button class="srch-xbtn" id="xBtn" onclick="clearSearch()">✕</button>
+    </div>
+    <div class="sugg-drop" id="suggDrop"></div>
+  </div>
+  <div class="srch-status" id="srchStatus">映画一覧を読み込み中…</div>
+</div>
+
+<!-- 映画バナー -->
+<div class="mbanner" id="mbanner">
+  <div>
+    <div class="mbtitle" id="bannerTitle"></div>
+    <div class="mbsub" id="bannerSub"></div>
+  </div>
+  <button class="mbc-btn" onclick="clearMovie()">✕ クリア</button>
+</div>
+
+<!-- ローディング -->
+<div class="lbar" id="lbar">
+  <div class="spin"></div>
+  <span id="lbarTxt">読み込み中…</span>
+</div>
+
+<!-- タブ -->
+<div class="tabs" id="tabs">
+  <button class="tab active" id="tabRank" onclick="switchTab('rank')">ランキング</button>
+  <button class="tab" id="tabTable" onclick="switchTab('table')">比較表</button>
+</div>
+
+<!-- フィルターバー（ランクモード） -->
+<div class="fbar" id="fbar">
+  <div class="flabel">優先基準</div>
+  <div class="frow">
+    <button class="fb act-img" onclick="setPriority('映像',this)">🎥 映像</button>
+    <button class="fb" onclick="setPriority('音響',this)">🔊 音響</button>
+    <button class="fb" onclick="setPriority('サイズ',this)">📐 サイズ</button>
+    <button class="fb" onclick="setPriority('premium',this)">✨ プレミアム</button>
+    <button class="fb" onclick="setPriority('access',this)">⏱ 近さ</button>
+  </div>
+</div>
+<div class="rbar" id="rbar"></div>
+
+<!-- カード一覧 -->
+<div class="cards" id="cards"></div>
+
+<!-- 比較表 -->
+<div class="tbl-wrap" id="tblWrap" style="display:none;">
+  <table id="tbl"></table>
+</div>
+<script>
+// ── THEATERS DATA ──────────────────────────────────────
+const THEATERS = [
+  {
+    id:"ion-itabashi", name:"イオンシネマ板橋", area:"板橋",
+    eigaPref:13, eigaArea:"130603", eigaId:"3058",
+    accessMin:35, bookingUrl:"https://www.aeoncinema.com/cinema/itabashi/",
+    screens:12, parking:true,
+    premium:[],
+    notes:"近さ・コスパ優先向き。プレミアム設備なし。"
+  },
+  {
+    id:"grand-cinema-sunshine", name:"グランドシネマサンシャイン池袋", area:"池袋",
+    eigaPref:13, eigaArea:"130501", eigaId:"3291",
+    accessMin:25, bookingUrl:"https://www.cinemasunshine.co.jp/theater/gdcs/",
+    screens:12, parking:false,
+    premium:[
+      {name:"IMAX Laser GT", scores:{映像:4,音響:3,サイズ:5}},
+      {name:"ULTRA 4DX",     scores:{映像:3,音響:3,サイズ:3}, taikan:true},
+      {name:"ScreenX",       scores:{映像:3,音響:3,サイズ:4}},
+      {name:"4DX",           scores:{映像:3,音響:3,サイズ:2}, taikan:true}
+    ],
+    notes:"関東最高スペックのIMAX。後方席推奨。"
+  },
+  {
+    id:"toho-ikebukuro", name:"TOHOシネマズ池袋", area:"池袋",
+    eigaPref:13, eigaArea:"130501", eigaId:"3307",
+    accessMin:25, bookingUrl:"https://hlo.tohotheater.jp/net/schedule/084/TNPI2000J01.do",
+    screens:10, parking:false,
+    premium:[
+      {name:"ScreenX with Dolby Atmos", scores:{映像:3,音響:5,サイズ:4}}
+    ],
+    notes:"音響＋多面映像の臨場感。"
+  },
+  {
+    id:"toho-shinjuku", name:"TOHOシネマズ新宿", area:"新宿",
+    eigaPref:13, eigaArea:"130201", eigaId:"3263",
+    accessMin:35, bookingUrl:"https://hlo.tohotheater.jp/net/schedule/076/TNPI2000J01.do",
+    screens:12, parking:false,
+    premium:[
+      {name:"IMAX Laser", scores:{映像:4,音響:3,サイズ:4}},
+      {name:"MX4D",        scores:{映像:3,音響:3,サイズ:2}, taikan:true}
+    ],
+    notes:"IMAX Laser＋体感型の両立が可能。"
+  },
+  {
+    id:"toho-hibiya", name:"TOHOシネマズ日比谷", area:"日比谷",
+    eigaPref:13, eigaArea:"130102", eigaId:"3281",
+    accessMin:25, bookingUrl:"https://hlo.tohotheater.jp/net/schedule/081/TNPI2000J01.do",
+    screens:13, parking:false,
+    premium:[
+      {name:"IMAX Laser",   scores:{映像:4,音響:3,サイズ:4}},
+      {name:"Dolby Atmos",  scores:{映像:2,音響:5,サイズ:2}}
+    ],
+    notes:"三田線乗換なし直結25分が最強アクセス。"
+  },
+  {
+    id:"marunouchi-piccadilly", name:"丸の内ピカデリー", area:"有楽町",
+    eigaPref:13, eigaArea:"130102", eigaId:"3011",
+    accessMin:30, bookingUrl:"https://www.smt-cinema.com/site/marunouchi/",
+    screens:3, parking:false,
+    premium:[
+      {name:"Dolby Cinema", scores:{映像:5,音響:5,サイズ:3}}
+    ],
+    notes:"都内唯一のDolby Cinema専用劇場。映像・音響の最高峰。"
+  },
+  {
+    id:"movix-saitama", name:"MOVIXさいたま", area:"さいたま",
+    eigaPref:11, eigaArea:"110102", eigaId:"3180",
+    accessMin:45, bookingUrl:"https://www.smt-cinema.com/site/saitama/",
+    screens:12, parking:true,
+    premium:[
+      {name:"Dolby Cinema", scores:{映像:5,音響:5,サイズ:3}}
+    ],
+    notes:"埼玉唯一・関東初のDolby Cinema。292席。"
+  },
+  {
+    id:"109-cinemas-shobu", name:"109シネマズ菖蒲", area:"菖蒲（埼玉）",
+    eigaPref:11, eigaArea:"110201", eigaId:"3184",
+    accessMin:75, bookingUrl:"https://109cinemas.net/shobu/",
+    screens:11, parking:true,
+    premium:[
+      {name:"IMAX Laser", scores:{映像:4,音響:3,サイズ:4}},
+      {name:"4DX",        scores:{映像:3,音響:3,サイズ:2}, taikan:true}
+    ],
+    notes:"日本初IMAX館。無料駐車場あり。車推奨。"
+  },
+  {
+    id:"united-cinemas-toshimaen", name:"ユナイテッドシネマとしまえん", area:"練馬",
+    eigaPref:13, eigaArea:"130602", eigaId:"3057",
+    accessMin:30, bookingUrl:"https://www.unitedcinemas.jp/toshimaen/",
+    screens:10, parking:false,
+    premium:[
+      {name:"IMAXデジタル", scores:{映像:2,音響:3,サイズ:4}},
+      {name:"4DX",          scores:{映像:3,音響:3,サイズ:2}, taikan:true}
+    ],
+    notes:"★赤01バスで小豆沢から乗換なし1本！"
+  },
+  {
+    id:"toho-oimachi", name:"TOHOシネマズ大井町", area:"大井町",
+    eigaPref:13, eigaArea:"130719", eigaId:"3333",
+    accessMin:46, bookingUrl:"https://hlo.tohotheater.jp/net/schedule/090/TNPI2000J01.do",
+    screens:8, parking:false,
+    premium:[
+      {name:"Dolby Cinema",       scores:{映像:5,音響:5,サイズ:3}},
+      {name:"プレミアムシアター",   scores:{映像:4,音響:4,サイズ:3}},
+      {name:"轟音シアター",         scores:{映像:3,音響:4,サイズ:3}}
+    ],
+    notes:"2026年3月開業の最新館。設備最新鋭。"
+  }
+];
+
+// エリア → 対象館マッピング
+
+// ── STATE ──────────────────────────────────────────────
+let allMovies=[];
+let moviesLoading=true;
+let selectedMovie=null;
+let mode='rank'; // rank | schedule
+let priority='映像';
+let showingIds=new Set();
+let scheduleMap={};
+let activeTab='rank';
+let suggIdx=-1;
+
+// ── SCORE CALC ─────────────────────────────────────────
+function maxScores(t){
+  if(!t.premium||!t.premium.length) return{映像:2,音響:2,サイズ:2};
+  let m={映像:2,音響:2,サイズ:2};
+  for(const p of t.premium){
+    const s=p.scores||{};
+    m.映像=Math.max(m.映像,s.映像||0);
+    m.音響=Math.max(m.音響,s.音響||0);
+    m.サイズ=Math.max(m.サイズ,s.サイズ||0);
+  }
+  return m;
+}
+function hasTaikan(t){return t.premium&&t.premium.some(p=>p.taikan);}
+
+// ── PRIORITY / RANKING ─────────────────────────────────
+function setPriority(p,btn){
+  priority=p;
+  document.querySelectorAll('.fb').forEach(b=>{
+    b.className='fb';
+  });
+  const cls=p==='映像'?'act-img':p==='音響'?'act-snd':p==='サイズ'?'act-siz':p==='premium'?'act-prm':'act-acc';
+  btn.classList.add(cls);
+  renderRankCards();
+}
+
+function ranked(){
+  return[...THEATERS].sort((a,b)=>{
+    if(priority==='access') return a.accessMin-b.accessMin;
+    if(priority==='premium'){
+      const ap=a.premium.length,bp=b.premium.length;
+      if(ap!==bp)return bp-ap;
+      return a.accessMin-b.accessMin;
+    }
+    const sa=maxScores(a),sb=maxScores(b);
+    const diff=sb[priority]-sa[priority];
+    if(diff!==0)return diff;
+    return a.accessMin-b.accessMin;
+  });
+}
+
+function schedRanked(){
+  return[...THEATERS].sort((a,b)=>{
+    const as=showingIds.has(a.id)?1:0,bs=showingIds.has(b.id)?1:0;
+    if(as!==bs)return bs-as;
+    const sa=maxScores(a),sb=maxScores(b);
+    return sb.映像-sa.映像||a.accessMin-b.accessMin;
+  });
+}
+
+// ── TAB ────────────────────────────────────────────────
+function switchTab(t){
+  activeTab=t;
+  document.getElementById('tabRank').className='tab'+(t==='rank'?' active':'');
+  document.getElementById('tabTable').className='tab'+(t==='table'?' active':'');
+  if(t==='rank'){
+    document.getElementById('cards').style.display='';
+    document.getElementById('tblWrap').style.display='none';
+  }else{
+    document.getElementById('cards').style.display='none';
+    document.getElementById('tblWrap').style.display='';
+    renderTable();
+  }
+}
+
+// ── RENDER RANK CARDS ──────────────────────────────────
+function renderRankCards(){
+  const list=ranked();
+  document.getElementById('rbar').textContent=
+    '優先: '+priority+' 順 / スコア順にランキング';
+  document.getElementById('cards').innerHTML=
+    list.map((t,i)=>renderCard(t,i+1)).join('');
+}
+
+function renderCard(t,rank){
+  const sc=maxScores(t);
+  const rc=rank===1?'r1':rank===2?'r2':rank===3?'r3':'rn';
+  const rl=rank<=3?['🥇','🥈','🥉'][rank-1]:rank;
+  const badges=t.premium.length===0
+    ?'<span class="pb non">通常スクリーンのみ</span>'
+    :t.premium.map((p,i)=>`<span class="pb ${i===0?'top':p.taikan?'tki':'sub'}">${p.name}</span>`).join('');
+  const pk=t.parking?'🅿 駐車場あり':'🚶 駐車場なし';
+  return`<div class="card">
+  <div class="rbg ${rc}">${rl}</div>
+  <div class="ctop">
+    <div class="cname">${t.name}</div>
+    <div class="cmeta">
+      <span class="atag">${t.area}</span>
+      <span class="acctag">⏱ <b>${t.accessMin}分</b></span>
+      ${hasTaikan(t)?'<span class="atag" style="background:#E8F5E9;color:#2E7D32;">💺 体感型あり</span>':''}
+    </div>
+  </div>
+  <div class="svrap">
+    <div class="srow"><span class="slabel">映像</span><div class="strk"><div class="sfill fm" style="width:${sc.映像*20}%"></div></div><span class="sval fm">${sc.映像}</span></div>
+    <div class="srow"><span class="slabel">音響</span><div class="strk"><div class="sfill fo" style="width:${sc.音響*20}%"></div></div><span class="sval fo">${sc.音響}</span></div>
+    <div class="srow"><span class="slabel">サイズ</span><div class="strk"><div class="sfill fs" style="width:${sc.サイズ*20}%"></div></div><span class="sval fs">${sc.サイズ}</span></div>
+  </div>
+  <div class="pbwrap">${badges}</div>
+  <div class="cfoot">
+    <div class="finfo">${t.screens}スクリーン<br>${pk}</div>
+    <a href="${t.bookingUrl}" target="_blank" class="bkbtn">チケット予約 →</a>
+  </div>
+</div>`;
+}
+
+// ── RENDER SCHEDULE CARDS ──────────────────────────────
+function fmtBadgeCls(n){
+  if(n.includes('IMAX'))return'fmt-imax';
+  if(n.includes('Dolby'))return'fmt-dolby';
+  if(n.includes('ScreenX'))return'fmt-screenx';
+  if(/4D|4DX|MX4D/.test(n))return'fmt-4d';
+  return'fmt-norm';
+}
+
+function renderSchedCard(t,rank){
+  const sc=maxScores(t);
+  const isShowing=showingIds.has(t.id);
+  const fmts=scheduleMap[t.id];
+  const isLoading=fmts&&fmts.loading;
+  const rc=rank===1?'r1':rank===2?'r2':rank===3?'r3':'rn';
+  const rl=rank<=3?['🥇','🥈','🥉'][rank-1]:rank;
+
+  let showBadge=isLoading
+    ?'<span class="show-load">取得中…</span>'
+    :isShowing?'<span class="show-on">✓ 上映中</span>'
+    :'<span class="show-off">上映なし</span>';
+
+  let schedHtml='';
+  if(isLoading){
+    schedHtml='<div class="sched-wrap"><div class="no-sched">スケジュールを取得中…</div></div>';
+  }else if(isShowing){
+    if(!Array.isArray(fmts)||!fmts.length){
+      schedHtml='<div class="sched-wrap"><div class="no-sched">詳細は <a href="https://eiga.com/movie/'+selectedMovie.id+'/theater/" style="color:var(--accent)">eiga.com</a> で確認</div></div>';
+    }else{
+      const fh=fmts.slice(0,6).map(fmt=>{
+        const bc=fmtBadgeCls(fmt.name);
+        const dh=(fmt.dates||[]).slice(0,3).map(d=>{
+          const th=(d.times||[]).map(tm=>
+            `<span class="tchip">${tm.time}</span>`
+          ).join('');
+          return`<div class="sched-date"><div class="sdate-lbl">${d.date}</div><div class="stimes">${th}</div></div>`;
+        }).join('');
+        return`<div class="sched-fmt"><span class="fmt-badge ${bc}">${fmt.name}</span>${dh}</div>`;
+      }).join('');
+      schedHtml=`<div class="sched-wrap"><div class="sched-div">📅 上映スケジュール</div>${fh}</div>`;
+    }
+  }else{
+    schedHtml='<div class="not-show-note">現在この映画は上映していません</div>';
+  }
+
+  const badges=t.premium.length===0
+    ?'<span class="pb non">通常スクリーンのみ</span>'
+    :t.premium.map((p,i)=>`<span class="pb ${i===0?'top':p.taikan?'tki':'sub'}">${p.name}</span>`).join('');
+
+  const dimCls=!isShowing&&!isLoading?'dim':'';
+  return`<div class="card ${dimCls}">
+  <div class="rbg ${rc}">${rl}</div>
+  <div class="ctop">
+    <div class="cname">${t.name}</div>
+    <div class="cmeta">
+      <span class="atag">${t.area}</span>
+      <span class="acctag">⏱ <b>${t.accessMin}分</b></span>
+      ${showBadge}
+    </div>
+  </div>
+  <div class="svrap">
+    <div class="srow"><span class="slabel">映像</span><div class="strk"><div class="sfill fm" style="width:${sc.映像*20}%"></div></div><span class="sval fm">${sc.映像}</span></div>
+    <div class="srow"><span class="slabel">音響</span><div class="strk"><div class="sfill fo" style="width:${sc.音響*20}%"></div></div><span class="sval fo">${sc.音響}</span></div>
+    <div class="srow"><span class="slabel">サイズ</span><div class="strk"><div class="sfill fs" style="width:${sc.サイズ*20}%"></div></div><span class="sval fs">${sc.サイズ}</span></div>
+  </div>
+  <div class="pbwrap">${badges}</div>
+  ${schedHtml}
+  <div class="cfoot">
+    <div class="finfo">${t.screens}スクリーン</div>
+    <a href="${t.bookingUrl}" target="_blank" class="bkbtn">チケット予約 →</a>
+  </div>
+</div>`;
+}
+
+function renderScheduleCards(){
+  const sorted=schedRanked();
+  const showingCount=[...showingIds].length;
+  document.getElementById('rbar').textContent=
+    `上映中: ${showingCount}館 ／ スコア順にランキング`;
+  document.getElementById('cards').innerHTML=
+    sorted.map((t,i)=>renderSchedCard(t,i+1)).join('');
+}
+
+// ── COMPARISON TABLE ───────────────────────────────────
+function renderTable(){
+  const rows=THEATERS.map(t=>{
+    const sc=maxScores(t);
+    const fmts=t.premium.map(p=>p.name).join('、')||'通常のみ';
+    return`<tr>
+      <td><b>${t.name}</b><br><span style="font-size:11px;color:#888">${t.area}</span></td>
+      <td>${t.accessMin}分</td>
+      <td><div class="tbl-score">
+        <span class="ts im">映像${sc.映像}</span>
+        <span class="ts do">音響${sc.音響}</span>
+        <span class="ts si">サイズ${sc.サイズ}</span>
+      </div></td>
+      <td style="font-size:11px">${fmts}</td>
+      <td>${t.parking?'🅿':'—'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('tbl').innerHTML=
+    `<tr><th>映画館</th><th>所要時間</th><th>スコア</th><th>プレミアム設備</th><th>P</th></tr>${rows}`;
+}
+
+// ── MOVIE SEARCH ───────────────────────────────────────
+function onInput(val){
+  const xBtn=document.getElementById('xBtn');
+  xBtn.style.display=val?'block':'none';
+  if(!val){closeSugg();return;}
+  buildSugg(val);
+}
+
+function onFocus(){
+  const val=document.getElementById('movieInput').value.trim();
+  if(val)buildSugg(val);
+}
+
+function onKeydown(e){
+  const drop=document.getElementById('suggDrop');
+  const items=drop.querySelectorAll('.sugg-item');
+  if(!drop.classList.contains('open'))return;
+  if(e.key==='ArrowDown'){e.preventDefault();suggIdx=Math.min(suggIdx+1,items.length-1);highlight(items);}
+  else if(e.key==='ArrowUp'){e.preventDefault();suggIdx=Math.max(suggIdx-1,0);highlight(items);}
+  else if(e.key==='Enter'&&suggIdx>=0){e.preventDefault();items[suggIdx]&&items[suggIdx].click();}
+  else if(e.key==='Escape'){closeSugg();}
+}
+
+function highlight(items){
+  items.forEach((it,i)=>it.style.background=i===suggIdx?'#f5f7ff':'');
+}
+
+function clearSearch(){
+  document.getElementById('movieInput').value='';
+  document.getElementById('xBtn').style.display='none';
+  closeSugg();
+}
+
+function clearMovie(){
+  selectedMovie=null;mode='rank';
+  showingIds=new Set();scheduleMap={};
+  document.getElementById('mbanner').classList.remove('on');
+  document.getElementById('fbar').style.display='';
+  document.getElementById('lbar').className='lbar';
+  clearSearch();
+  renderRankCards();
+}
+
+function buildSugg(q){
+  const lq=q.toLowerCase();
+  const hits=allMovies.filter(m=>
+    m.title.toLowerCase().includes(lq)||m.title.includes(q)
+  ).slice(0,10);
+
+  const drop=document.getElementById('suggDrop');
+  suggIdx=-1;
+
+  if(moviesLoading&&hits.length===0){
+    drop.innerHTML='<div class="sugg-empty">映画一覧を読み込み中…</div>';
+  }else if(hits.length===0){
+    drop.innerHTML=`<div class="sugg-empty">「${q}」は見つかりませんでした</div>`;
+  }else{
+    drop.innerHTML=hits.map(m=>
+      `<div class="sugg-item" onclick="selectMovieById('${m.id}')">🎬 ${m.title}</div>`
+    ).join('');
+  }
+  drop.classList.add('open');
+}
+
+function closeSugg(){
+  document.getElementById('suggDrop').classList.remove('open');
+  suggIdx=-1;
+}
+
+async function selectMovie(movie){
+  document.getElementById('movieInput').value=movie.title;
+  closeSugg();
+  await startMovieSearch(movie);
+}
+
+// ── CORS PROXY ─────────────────────────────────────────
+async function fetchViaProxy(url, timeout=9000) {
+  const proxies = [
+    async (u) => {
+      const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(u));
+      const j = await r.json(); return j.contents;
+    },
+    async (u) => {
+      const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(u));
+      return r.text();
+    },
+    async (u) => {
+      const r = await fetch('https://thingproxy.freeboard.io/fetch/' + u);
+      return r.text();
+    }
+  ];
+  for (const proxy of proxies) {
+    try {
+      const toP = new Promise((_,rej)=>setTimeout(()=>rej(new Error('to')),timeout));
+      const html = await Promise.race([proxy(url), toP]);
+      if (html && html.length > 500) return html;
+    } catch(e) { /* 次のプロキシへ */ }
+  }
+  return null;
+}
+
+// ── MOVIE LIST ─────────────────────────────────────────
+async function initMovies(){
+  const st=document.getElementById('srchStatus');
+  st.textContent='映画一覧を読み込み中…';
+  try {
+    const seen=new Set(); const movies=[];
+    const pages=Array.from({length:10},(_,i)=>i+1);
+    const results=await Promise.allSettled(pages.map(async page=>{
+      const html=await fetchViaProxy(`https://eiga.com/now/all/release/${page}/`,10000);
+      if(!html) return [];
+      const doc=new DOMParser().parseFromString(html,'text/html');
+      const found=[];
+      for(const a of doc.querySelectorAll('a[href]')){
+        const m=(a.getAttribute('href')||'').match(/\/movie\/(\d+)\//);
+        if(!m) continue;
+        const id=m[1]; if(seen.has(id)) continue;
+        const img=a.querySelector('img[alt]');
+        const title=img?img.getAttribute('alt'):a.textContent.trim();
+        if(!title||title.length<1||title.length>80) continue;
+        seen.add(id); found.push({id,title});
+      }
+      return found;
+    }));
+    for(const r of results) if(r.status==='fulfilled') movies.push(...r.value);
+    const deduped=[]; const sf=new Set();
+    for(const m of movies) if(!sf.has(m.id)){sf.add(m.id);deduped.push(m);}
+    allMovies=deduped; moviesLoading=false;
+    st.textContent=allMovies.length>0?allMovies.length+'作品を読み込みました':'映画情報を取得できませんでした';
+  }catch(e){
+    moviesLoading=false;
+    st.textContent='映画一覧の取得に失敗しました。再読み込みしてください。';
+  }
+}
+
+// ── SCHEDULE PARSE ─────────────────────────────────────
+const KNOWN_FORMATS=[
+  "IMAX字幕","IMAX吹替","IMAX 3D字幕","IMAX 3D吹替",
+  "Dolby Atmos字幕","Dolby Atmos吹替",
+  "Dolby Cinema字幕","Dolby Cinema吹替",
+  "ScreenX字幕","ScreenX吹替",
+  "ULTRA 4DX字幕","ULTRA 4DX吹替",
+  "4DX字幕","4DX吹替","4D字幕","4D吹替",
+  "MX4D字幕","MX4D吹替",
+  "Dolby 3D字幕","Dolby 3D吹替",
+  "プレミアムボックス字幕","プレミアムボックス吹替",
+  "字幕","吹替","日本語吹替","英語字幕"
+];
+
+function parseScheduleText(text){
+  const DATE_RE=/(\d{1,2})\/(\d{1,2})（[月火水木金土日]）/g;
+  const TIME_RE=/\b(\d{1,2}:\d{2})\b/g;
+  function extractDT(seg){
+    const dates=[]; const dm=[...seg.matchAll(DATE_RE)];
+    if(!dm.length) return [];
+    for(let i=0;i<dm.length;i++){
+      const nextIdx=i+1<dm.length?dm[i+1].index:seg.length;
+      const win=seg.slice(dm[i].index+dm[i][0].length,nextIdx);
+      const times=[];
+      for(const tm of win.matchAll(TIME_RE)){
+        const h=parseInt(tm[1]); if(h>=5&&h<=29) times.push({time:tm[1]});
+      }
+      if(times.length) dates.push({date:dm[i][0],times});
+    }
+    return dates;
+  }
+  const pos=[];
+  for(const fmt of KNOWN_FORMATS){
+    let p=0;
+    while((p=text.indexOf(fmt,p))!==-1){pos.push({pos:p,name:fmt});p+=fmt.length;}
+  }
+  if(!pos.length){const d=extractDT(text);return d.length?[{name:'字幕',dates:d}]:[];}
+  pos.sort((a,b)=>a.pos-b.pos);
+  const dd=pos.filter((f,i)=>i===0||f.pos>=pos[i-1].pos+pos[i-1].name.length);
+  const fmts=[];
+  for(let i=0;i<dd.length;i++){
+    const s=dd[i].pos+dd[i].name.length;
+    const e=i+1<dd.length?dd[i+1].pos:text.length;
+    const d=extractDT(text.slice(s,Math.min(e,s+3000)));
+    if(d.length) fmts.push({name:dd[i].name,dates:d});
+  }
+  return fmts;
+}
+
+async function fetchTheaterSchedule(movieId,theater){
+  const url=`https://eiga.com/movie-theater/${movieId}/${theater.eigaPref}/${theater.eigaArea}/${theater.eigaId}/`;
+  const html=await fetchViaProxy(url,10000);
+  if(!html) return null;
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  doc.querySelectorAll('script,style,noscript').forEach(el=>el.remove());
+  const text=doc.body?doc.body.innerText:'';
+  const fmts=parseScheduleText(text);
+  return fmts.length>0?fmts:null;
+}
+
+// ── SCHEDULE FETCH ─────────────────────────────────────
+async function startMovieSearch(movie){
+  selectedMovie=movie; mode='schedule';
+  document.getElementById('mbanner').classList.add('on');
+  document.getElementById('bannerTitle').textContent='🎬 '+movie.title;
+  document.getElementById('bannerSub').textContent='スケジュールを取得中…';
+  document.getElementById('fbar').style.display='none';
+  document.getElementById('lbar').className='lbar on';
+  document.getElementById('lbarTxt').textContent='eiga.comからスケジュールを取得中…';
+
+  showingIds=new Set(); scheduleMap={};
+  for(const t of THEATERS) scheduleMap[t.id]={loading:true};
+  renderScheduleCards();
+
+  const guard=setTimeout(()=>{
+    document.getElementById('lbar').className='lbar';
+    for(const t of THEATERS){if(scheduleMap[t.id]&&scheduleMap[t.id].loading)scheduleMap[t.id]=null;}
+    renderScheduleCards();
+  },25000);
+
+  try{
+    const results=await Promise.all(THEATERS.map(async t=>{
+      try{const data=await fetchTheaterSchedule(movie.id,t);return{id:t.id,data};}
+      catch(e){return{id:t.id,data:null};}
+    }));
+    showingIds=new Set(); scheduleMap={};
+    for(const{id,data}of results){
+      if(data&&data.length>0){showingIds.add(id);scheduleMap[id]=data;}
+      else{scheduleMap[id]=null;}
+    }
+    const cnt=showingIds.size;
+    document.getElementById('bannerSub').textContent=
+      cnt>0?`${cnt}館で上映中`:'対象10館での上映なし';
+  }catch(e){
+    document.getElementById('bannerSub').textContent='取得エラー — もう一度お試しください';
+    for(const t of THEATERS) scheduleMap[t.id]=null;
+  }finally{
+    clearTimeout(guard);
+    document.getElementById('lbar').className='lbar';
+    renderScheduleCards();
+  }
+}
+
+// ── INIT ───────────────────────────────────────────────
+function selectMovieById(id){
+  const movie=allMovies.find(m=>m.id===id);
+  if(movie) selectMovie(movie);
+}
+
+renderRankCards();
+initMovies();
+</script>
+</body>
+</html>
