@@ -802,18 +802,50 @@ function parseScheduleText(text){
     }
     return dates;
   }
+
+  // ── Step1: テキスト上の全フォーマット出現位置を収集 ──────────
+  // KNOWN_FORMATS は長い名前が先に並んでいるため、
+  // 長いフォーマット名を先に登録してから短いものをスキップする。
+  const hits=[]; // {name, pos, len}
+  for(const fmt of KNOWN_FORMATS){
+    let pos=0;
+    while(true){
+      const fi=text.indexOf(fmt,pos);
+      if(fi<0) break;
+      pos=fi+fmt.length;
+      // 既登録の長いフォーマット名の内側に入っていないか確認
+      const inside=hits.some(h=>h.pos<=fi&&fi<h.pos+h.len);
+      if(!inside) hits.push({name:fmt,pos:fi,len:fmt.length});
+    }
+  }
+  // 出現順にソート
+  hits.sort((a,b)=>a.pos-b.pos);
+
+  // ── Step2: 各出現区間のテキストから日時を抽出 ────────────────
+  const byName={}; // name -> dates[]
+  for(let i=0;i<hits.length;i++){
+    const h=hits[i];
+    const segStart=h.pos+h.len;
+    // 次のフォーマット出現位置までがこのフォーマットの区間
+    const segEnd=i+1<hits.length?hits[i+1].pos:text.length;
+    const seg=text.slice(segStart,segEnd);
+    const dates=extractDT(seg);
+    if(dates.length){
+      if(!byName[h.name]) byName[h.name]=[];
+      byName[h.name].push(...dates);
+    }
+  }
+
+  // ── Step3: KNOWN_FORMATS 順で結果を返す（日付重複排除） ───────
   const results=[];
   for(const fmt of KNOWN_FORMATS){
-    const fi=text.indexOf(fmt);
-    if(fi<0) continue;
-    let nextFi=text.length;
-    for(const f2 of KNOWN_FORMATS){
-      const i2=text.indexOf(f2,fi+fmt.length);
-      if(i2>fi&&i2<nextFi) nextFi=i2;
-    }
-    const seg=text.slice(fi+fmt.length,nextFi);
-    const dates=extractDT(seg);
-    if(dates.length) results.push({name:fmt,dates});
+    if(!byName[fmt]) continue;
+    const seen=new Set();
+    const dedupedDates=byName[fmt].filter(d=>{
+      if(seen.has(d.date)) return false;
+      seen.add(d.date); return true;
+    });
+    if(dedupedDates.length) results.push({name:fmt,dates:dedupedDates});
   }
   return results;
 }
